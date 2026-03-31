@@ -1,0 +1,42 @@
+# --- JAVA & MAVEN ---
+target/
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.restore
+release.properties
+dependency-reduced-pom.xml
+buildNumber.properties
+.mvn/timing.properties
+.mvn/wrapper/maven-wrapper.jar
+
+# --- SERENITY BDD ---
+# No subimos los reportes locales, GitHub generará los suyos
+target/site/serenity/
+velocity.log
+serenity.log
+
+# --- INTELLIJ ---
+.idea/
+*.iml
+*.iws
+*.ipr
+out/
+
+# --- DOCKER (Datos locales) ---
+# ¡MUY IMPORTANTE! No subas tu base de datos de InfluxDB
+influxdb_data/
+grafana_data/
+
+# --- SISTEMA & LOGS ---
+*.log
+.DS_Store
+Thumbs.db
+.classpath
+.project
+.settings/
+.vscode/
+
+# --- SECRETOS ---
+# Si creas un archivo de variables de entorno, no lo subas
+.env
