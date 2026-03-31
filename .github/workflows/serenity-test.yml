@@ -6,7 +6,7 @@ on:
       tags:
         description: 'Selecciona el Tag de Cucumber a ejecutar'
         required: true
-        default: '@Regresion'
+        default: '@loginThePage'
         type: choice
         options:
           - '@loginThePage'
@@ -32,12 +32,14 @@ jobs:
 
       - name: Run Serenity Tests
         env:
-          # Aquí pasas las credenciales de tu InfluxDB si son dinámicas
-            HEADLESS_CHROME: true  # Esto activa el modo sin ventana en el servidor
-            INFLUX_URL: ${{ secrets.INFLUX_URL }}
-            INFLUX_TOKEN: ${{ secrets.INFLUX_TOKEN }}
-            INFLUX_BUCKET: ${{ secrets.INFLUX_BUCKET }}
-            # ---------------------------
+          # --- Configuración de Entorno ---
+          HEADLESS_CHROME: true  # Esto activa el modo sin ventana en el servidor
+          INFLUX_URL: ${{ secrets.INFLUX_URL }}
+          INFLUX_TOKEN: ${{ secrets.INFLUX_TOKEN }}
+          INFLUX_BUCKET: ${{ secrets.INFLUX_BUCKET }}
+          # Es importante que el correo coincida con tu registro de InfluxDB Cloud
+          INFLUX_ORG: "analista.devsof92@gmail.com"
+          # ---------------------------
         run: |
           if [ "${{ github.event.inputs.tags }}" == "@All" ]; then
             mvn clean verify
