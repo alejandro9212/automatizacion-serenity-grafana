@@ -9,6 +9,6 @@ Feature: inteaccion con logion al sitio web
 
     @loginThePage
     Scenario: validar interaccion de pagina web
-      And tengo usuario "++++++" contraseña "ad"
+      And tengo usuario "Admin" contraseña "admin123"
       When doy click en el boton iniciar sesion
       Then debe ingresar correctamente al home de la pagina web
