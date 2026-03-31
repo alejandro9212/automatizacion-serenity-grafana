@@ -33,7 +33,11 @@ jobs:
       - name: Run Serenity Tests
         env:
           # Aquí pasas las credenciales de tu InfluxDB si son dinámicas
-          INFLUX_URL: ${{ secrets.INFLUX_URL }}
+            HEADLESS_CHROME: true  # Esto activa el modo sin ventana en el servidor
+            INFLUX_URL: ${{ secrets.INFLUX_URL }}
+            INFLUX_TOKEN: ${{ secrets.INFLUX_TOKEN }}
+            INFLUX_BUCKET: ${{ secrets.INFLUX_BUCKET }}
+            # ---------------------------
         run: |
           if [ "${{ github.event.inputs.tags }}" == "@All" ]; then
             mvn clean verify
