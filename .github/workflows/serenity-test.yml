@@ -38,7 +38,7 @@ jobs:
           INFLUX_TOKEN: ${{ secrets.INFLUX_TOKEN }}
           INFLUX_BUCKET: ${{ secrets.INFLUX_BUCKET }}
           # Es importante que el correo coincida con tu registro de InfluxDB Cloud
-          INFLUX_ORG: "analista.devsof92@gmail.com"
+          INFLUX_ORG: "Automatizacion_serenity_grafana"
           # ---------------------------
         run: |
           if [ "${{ github.event.inputs.tags }}" == "@All" ]; then
