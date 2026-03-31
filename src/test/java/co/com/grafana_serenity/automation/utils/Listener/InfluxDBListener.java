@@ -70,7 +70,8 @@ public class InfluxDBListener implements StepListener {
             client.send(request, HttpResponse.BodyHandlers.ofString());
             System.out.println(">>> [EXITO] DATO ENVIADO A INFLUXDB: " + data);
         } catch (Exception e) {
-            System.out.println(">>> [ERROR] FALLÓ EL ENVÍO: " + e.getMessage());
+            System.out.println("[ERROR] FALLÓ EL ENVÍO: " + e.getMessage());
+            e.printStackTrace();
         }
     }
 
