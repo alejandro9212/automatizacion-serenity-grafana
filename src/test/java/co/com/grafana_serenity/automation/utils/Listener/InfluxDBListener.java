@@ -58,19 +58,44 @@ public class InfluxDBListener implements StepListener {
 
     private void enviarAInflux(String data) {
         try {
+            // Leemos las variables que configuramos en el serenity.conf / Pipeline
+            String influxUrl = System.getenv("INFLUX_URL");
+            String influxToken = System.getenv("INFLUX_TOKEN");
+            String influxBucket = System.getenv("INFLUX_BUCKET");
+            String influxOrg = System.getenv("INFLUX_ORG");
+
+            // Si alguna es nula, intentamos valores por defecto o lanzamos error claro
+            if (influxUrl == null) {
+                System.out.println("[ERROR] No se encontró la URL de Influx en las variables de entorno");
+                return;
+            }
+
             HttpClient client = HttpClient.newBuilder()
-                    .connectTimeout(Duration.ofSeconds(5))
+                    .connectTimeout(Duration.ofSeconds(10))
                     .build();
 
+            // Construimos la URL para InfluxDB 2.0 Cloud
+            String finalUrl = String.format("%s/api/v2/write?org=%s&bucket=%s&precision=s",
+                    influxUrl, influxOrg, influxBucket);
+
             HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create("http://localhost:8086/write?db=serenity_db"))
+                    .uri(URI.create(finalUrl))
+                    .header("Authorization", "Token " + influxToken) // El Token es obligatorio en la nube
+                    .header("Content-Type", "text/plain; charset=utf-8")
                     .POST(HttpRequest.BodyPublishers.ofString(data))
                     .build();
 
-            client.send(request, HttpResponse.BodyHandlers.ofString());
-            System.out.println(">>> [EXITO] DATO ENVIADO A INFLUXDB: " + data);
+            HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+
+            if (response.statusCode() >= 200 && response.statusCode() < 300) {
+                System.out.println(">>> [EXITO] DATO ENVIADO A INFLUXDB CLOUD. Status: " + response.statusCode());
+            } else {
+                System.out.println("[ERROR] InfluxDB rechazó los datos. Status: " + response.statusCode());
+                System.out.println("Cuerpo de error: " + response.body());
+            }
+
         } catch (Exception e) {
-            System.out.println("[ERROR] FALLÓ EL ENVÍO: " + e.getMessage());
+            System.out.println("[ERROR] FALLÓ EL ENVÍO AL API: " + e.getMessage());
             e.printStackTrace();
         }
     }
