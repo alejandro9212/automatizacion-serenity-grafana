@@ -4,7 +4,7 @@ import net.thucydides.model.domain.DataTable;
 import net.thucydides.model.domain.Story;
 import net.thucydides.model.domain.TestOutcome;
 import net.thucydides.model.domain.TestResult;
-import net.thucydides.model.domain.TestTag;
+import net.thucydides.model.domain.TestTag; // Import necesario para los tags
 import net.thucydides.model.screenshots.ScreenshotAndHtmlSource;
 import net.thucydides.model.steps.ExecutedStepDescription;
 import net.thucydides.model.steps.StepFailure;
@@ -29,30 +29,29 @@ public class InfluxDBListener implements StepListener {
     public void testFinished(TestOutcome result) {
         System.out.println(">>> [DEBUG] TEST FINALIZADO: " + result.getName());
 
-        // 1. Extraemos el nombre del escenario (limpiando espacios)
-        String scenarioName = result.getName().replace(" ", "_");
+        // Limpiamos espacios para evitar el error de "Malformed Tag"
+        String testName = result.getName().replace(" ", "_");
         String status = result.getResult().toString();
         long duration = result.getDuration();
 
-        // 2. Extraemos los Tags de Cucumber (@login, @smoke, etc.)
+        // Extraemos los tags de forma segura
         String allTags = result.getTags().stream()
                 .map(TestTag::getName)
-                .collect(Collectors.joining(","));
+                .collect(Collectors.joining(","))
+                .replace(" ", "_"); // Evita espacios en los tags
 
         String tagValue = allTags.isEmpty() ? "no_tag" : allTags;
 
-        System.out.println(">>> [DEBUG] FINALIZADO: " + scenarioName + " | ESTADO: " + status + " | TAGS: " + tagValue);
+        System.out.println(">>> [DEBUG] FINALIZADO: " + testName + " | ESTADO: " + status + " | TAGS: " + tagValue);
 
-        // MÉTRICA 1: Tiempos de respuesta (Agregamos scenario y tag)
-        String payloadDuration = String.format("login_metrics,scenario=%s,tag=%s status=\"%s\",duration=%d",
-                scenarioName, tagValue, status, duration);
+        // MÉTRICA 1: Tiempos de respuesta (Formato corregido sin espacios prohibidos)
+        String payloadDuration = String.format("login_metrics,test=%s,tag=%s status=\"%s\",duration=%d",
+                testName, tagValue, status, duration);
 
-        // MÉTRICA 2: Conteo de ejecuciones (Agregamos scenario como TAG para que salga en la tabla)
-        // El formato es: nombre_tabla,tag1=valor,tag2=valor campo=valor
-        String payloadCount = String.format("test_results,scenario=%s,tag=%s status=\"%s\",value=1",
-                scenarioName, tagValue, status);
+        // MÉTRICA 2: Conteo (Formato corregido: la coma pega los tags al nombre de la tabla)
+        String payloadCount = String.format("test_results,test=%s,tag=%s status=\"%s\",value=1",
+                testName, tagValue, status);
 
-        // Enviamos ambas métricas a la nube
         enviarAInflux(payloadDuration);
         enviarAInflux(payloadCount);
     }
@@ -69,10 +68,7 @@ public class InfluxDBListener implements StepListener {
             String influxBucket = System.getenv("INFLUX_BUCKET");
             String influxOrg = System.getenv("INFLUX_ORG");
 
-            if (influxUrl == null || influxToken == null) {
-                System.out.println("[ERROR] Faltan variables de entorno para InfluxDB");
-                return;
-            }
+            if (influxUrl == null) return;
 
             HttpClient client = HttpClient.newBuilder()
                     .connectTimeout(Duration.ofSeconds(10))
@@ -91,23 +87,22 @@ public class InfluxDBListener implements StepListener {
             HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
 
             if (response.statusCode() >= 200 && response.statusCode() < 300) {
-                System.out.println(">>> [EXITO] DATO ENVIADO A INFLUXDB CLOUD (" + response.statusCode() + ")");
+                System.out.println(">>> [EXITO] DATO ENVIADO. Status: " + response.statusCode());
             } else {
-                System.out.println("[ERROR] InfluxDB Cloud rechazó los datos: " + response.body());
+                System.out.println("[ERROR] Status: " + response.statusCode() + " | " + response.body());
             }
-
         } catch (Exception e) {
-            System.out.println("[ERROR] FALLÓ EL ENVÍO AL API: " + e.getMessage());
+            e.printStackTrace();
         }
     }
 
-    // --- MÉTODOS OBLIGATORIOS RESTANTES (SIN CAMBIOS) ---
+    // --- EL RESTO DE MÉTODOS OBLIGATORIOS IGUALES A TU CLASE ORIGINAL ---
     @Override public void testSuiteStarted(Class<?> aClass) {}
     @Override public void testSuiteStarted(Story story) {}
     @Override public void testSuiteFinished() {}
     @Override public void testStarted(String s) {}
-    @Override public void testStarted(String s, String s1) { System.out.println(">>> [DEBUG] LISTENER INICIADO"); }
-    @Override public void testStarted(String s, String s1, ZonedDateTime zonedDateTime) { System.out.println(">>> [DEBUG] LISTENER INICIADO (4.x)"); }
+    @Override public void testStarted(String s, String s1) {}
+    @Override public void testStarted(String s, String s1, ZonedDateTime zonedDateTime) {}
     @Override public void testRetried() {}
     @Override public void stepStarted(ExecutedStepDescription executedStepDescription) {}
     @Override public void skippedStepStarted(ExecutedStepDescription executedStepDescription) {}
