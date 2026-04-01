@@ -4,7 +4,7 @@ import net.thucydides.model.domain.DataTable;
 import net.thucydides.model.domain.Story;
 import net.thucydides.model.domain.TestOutcome;
 import net.thucydides.model.domain.TestResult;
-import net.thucydides.model.domain.TestTag; // Import necesario para los tags
+import net.thucydides.model.domain.TestTag; // Importante: Asegúrate de tener este import
 import net.thucydides.model.screenshots.ScreenshotAndHtmlSource;
 import net.thucydides.model.steps.ExecutedStepDescription;
 import net.thucydides.model.steps.StepFailure;
@@ -27,33 +27,27 @@ public class InfluxDBListener implements StepListener {
 
     @Override
     public void testFinished(TestOutcome result) {
-        System.out.println(">>> [DEBUG] TEST FINALIZADO: " + result.getName());
-
-        // Limpiamos espacios para evitar el error de "Malformed Tag"
-        String testName = result.getName().replace(" ", "_");
+        // 1. Limpiamos el nombre del escenario (Quitamos espacios y puntos)
+        String scenarioName = result.getName().replaceAll("[^a-zA-Z0-9]", "_");
         String status = result.getResult().toString();
         long duration = result.getDuration();
 
-        // Extraemos los tags de forma segura
-        String allTags = result.getTags().stream()
+        // 2. Extraemos los tags y los limpiamos (Solo letras, números y el @)
+        String cleanTags = result.getTags().stream()
                 .map(TestTag::getName)
-                .collect(Collectors.joining(","))
-                .replace(" ", "_"); // Evita espacios en los tags
+                .map(t -> t.replaceAll("[^a-zA-Z0-9@]", "_"))
+                .collect(Collectors.joining("-")); // Usamos guion para no confundir a Influx con la coma
 
-        String tagValue = allTags.isEmpty() ? "no_tag" : allTags;
+        if (cleanTags.isEmpty()) cleanTags = "no_tag";
 
-        System.out.println(">>> [DEBUG] FINALIZADO: " + testName + " | ESTADO: " + status + " | TAGS: " + tagValue);
+        System.out.println(">>> [DEBUG] ENVIANDO: " + scenarioName + " | TAGS: " + cleanTags);
 
-        // MÉTRICA 1: Tiempos de respuesta (Formato corregido sin espacios prohibidos)
-        String payloadDuration = String.format("login_metrics,test=%s,tag=%s status=\"%s\",duration=%d",
-                testName, tagValue, status, duration);
+        // FORMULACIÓN CORRECTA (Sin espacios en los Tags de Influx)
+        // Estructura: tabla,tag1=valor,tag2=valor campo=valor
+        String payload = String.format("test_results,scenario=%s,tag=%s status=\"%s\",value=1,duration=%d",
+                scenarioName, cleanTags, status, duration);
 
-        // MÉTRICA 2: Conteo (Formato corregido: la coma pega los tags al nombre de la tabla)
-        String payloadCount = String.format("test_results,test=%s,tag=%s status=\"%s\",value=1",
-                testName, tagValue, status);
-
-        enviarAInflux(payloadDuration);
-        enviarAInflux(payloadCount);
+        enviarAInflux(payload);
     }
 
     @Override
@@ -86,17 +80,18 @@ public class InfluxDBListener implements StepListener {
 
             HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
 
-            if (response.statusCode() >= 200 && response.statusCode() < 300) {
-                System.out.println(">>> [EXITO] DATO ENVIADO. Status: " + response.statusCode());
-            } else {
-                System.out.println("[ERROR] Status: " + response.statusCode() + " | " + response.body());
+            // Log para saber si funcionó
+            System.out.println(">>> [INFLUX] Status: " + response.statusCode());
+            if (response.statusCode() != 204) {
+                System.out.println(">>> [ERROR INFO] " + response.body());
             }
+
         } catch (Exception e) {
             e.printStackTrace();
         }
     }
 
-    // --- EL RESTO DE MÉTODOS OBLIGATORIOS IGUALES A TU CLASE ORIGINAL ---
+    // --- MÉTODOS OBLIGATORIOS (SIN CAMBIOS) ---
     @Override public void testSuiteStarted(Class<?> aClass) {}
     @Override public void testSuiteStarted(Story story) {}
     @Override public void testSuiteFinished() {}
@@ -104,28 +99,28 @@ public class InfluxDBListener implements StepListener {
     @Override public void testStarted(String s, String s1) {}
     @Override public void testStarted(String s, String s1, ZonedDateTime zonedDateTime) {}
     @Override public void testRetried() {}
-    @Override public void stepStarted(ExecutedStepDescription executedStepDescription) {}
-    @Override public void skippedStepStarted(ExecutedStepDescription executedStepDescription) {}
-    @Override public void stepFailed(StepFailure stepFailure) {}
-    @Override public void stepFailed(StepFailure stepFailure, List<ScreenshotAndHtmlSource> list, boolean b, ZonedDateTime zonedDateTime) {}
-    @Override public void lastStepFailed(StepFailure stepFailure) {}
+    @Override public void stepStarted(ExecutedStepDescription esd) {}
+    @Override public void skippedStepStarted(ExecutedStepDescription esd) {}
+    @Override public void stepFailed(StepFailure sf) {}
+    @Override public void stepFailed(StepFailure sf, List<ScreenshotAndHtmlSource> l, boolean b, ZonedDateTime z) {}
+    @Override public void lastStepFailed(StepFailure sf) {}
     @Override public void stepIgnored() {}
     @Override public void stepPending() {}
     @Override public void stepPending(String s) {}
     @Override public void stepFinished() {}
-    @Override public void stepFinished(List<ScreenshotAndHtmlSource> list, ZonedDateTime zonedDateTime) {}
-    @Override public void testFailed(TestOutcome testOutcome, Throwable throwable) {}
+    @Override public void stepFinished(List<ScreenshotAndHtmlSource> l, ZonedDateTime z) {}
+    @Override public void testFailed(TestOutcome to, Throwable t) {}
     @Override public void testIgnored() {}
     @Override public void testSkipped() {}
     @Override public void testPending() {}
     @Override public void testIsManual() {}
     @Override public void notifyScreenChange() {}
-    @Override public void useExamplesFrom(DataTable dataTable) {}
-    @Override public void addNewExamplesFrom(DataTable dataTable) {}
-    @Override public void exampleStarted(Map<String, String> map) {}
+    @Override public void useExamplesFrom(DataTable dt) {}
+    @Override public void addNewExamplesFrom(DataTable dt) {}
+    @Override public void exampleStarted(Map<String, String> m) {}
     @Override public void exampleFinished() {}
     @Override public void assumptionViolated(String s) {}
     @Override public void testRunFinished() {}
-    @Override public void takeScreenshots(List<ScreenshotAndHtmlSource> list) {}
-    @Override public void takeScreenshots(TestResult testResult, List<ScreenshotAndHtmlSource> list) {}
+    @Override public void takeScreenshots(List<ScreenshotAndHtmlSource> l) {}
+    @Override public void takeScreenshots(TestResult tr, List<ScreenshotAndHtmlSource> l) {}
 }
